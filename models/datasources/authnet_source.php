@@ -282,26 +282,24 @@ class AuthnetSource extends DataSource {
 			);
 		$status = $response_codes[$response["response_code"]];
 		$Model->id = 0;
-		if ($response["response_code"] == 1) {
-			$data = array();
-			// good
-			if (!empty($response["transaction_id"])) {
-				$Model->id = $transaction_id = $response["transaction_id"];
-				$Model->setInsertID($Model->id);
-				$data[$Model->alias] = $response;
-			} elseif (!empty($response["authorization_code"])) {
-				if (isset($Model->requestData) && isset($Model->requestData["transaction_id"])) {
-					$Model->id = $transaction_id = $response["transaction_id"] = $Model->requestData["transaction_id"];
-					$Model->setInsertID($Model->id);
-					$data[$Model->alias] = $response;
-				}
-				$data[$Model->alias] = $response;
-			} elseif (isset($input["x_trans_id"]) && !empty($input["x_trans_id"])) {
-				$Model->id = $transaction_id = $input["x_trans_id"];
+		// parse transaction id, as primary key
+		if (!empty($response["transaction_id"])) {
+			$Model->id = $transaction_id = $response["transaction_id"];
+			$Model->setInsertID($Model->id);
+		} elseif (!empty($response["authorization_code"])) {
+			if (isset($Model->requestData) && isset($Model->requestData["transaction_id"])) {
+				$Model->id = $transaction_id = $response["transaction_id"] = $Model->requestData["transaction_id"];
 				$Model->setInsertID($Model->id);
 				$data[$Model->alias] = $response;
 			}
-			$data = Set::merge($Model->data, $data);
+		} elseif (isset($input["x_trans_id"]) && !empty($input["x_trans_id"])) {
+			$Model->id = $transaction_id = $input["x_trans_id"];
+			$Model->setInsertID($Model->id);
+		}
+		// parse & determin status and thus, what to return
+		if ($response["response_code"] == 1) {
+			// good
+			$data = Set::merge($Model->data, array($Model->alias => $response));
 			$Model->set($data);
 		} else {
 			// bad
@@ -422,6 +420,11 @@ class AuthnetSource extends DataSource {
 		}
 		// log to a model (database table), if setup on the model
 		if (isset($Model->logModel) && is_object($Model->logModel)) {
+			// inject data from this model to the logModel, if set
+			// this is a convenient way to pass IDs around, would have to be handled in the logModel 
+			if (isset($Model->logModelData)) {
+				$Model->logModel->logModelData = $Model->logModelData; 
+			}
 			$Model->logModel->create(false);
 			$Model->logModel->save($return);
 		}
