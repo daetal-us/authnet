@@ -139,6 +139,8 @@ class AuthnetSource extends DataSource {
 		} else {
 			// if a negative value is passed, assuming refund
 			$data = Set::merge($data, array('default_type' => 'CREDIT'));
+			// Authorize assumes we want to send a positive number for a credit transcation (how much to credit)
+			$data['amount'] = abs((float) $data['amount']);
 		}
 		$data = Set::merge($this->config, $data);
 		return $this->__request($Model, $data);
@@ -152,6 +154,15 @@ class AuthnetSource extends DataSource {
 	public function delete(&$Model, $id = null) {
 		if (empty($id)) {
 			$id = $Model->id;
+		}
+		if (is_array($id) && isset($id[$Model->alias][$Model->primaryKey])) {
+			$id = $id[$Model->alias][$Model->primaryKey];
+		} elseif (is_array($id) && isset($id[$Model->alias.'.'.$Model->primaryKey])) {
+			$id = $id[$Model->alias.'.'.$Model->primaryKey];
+		} elseif (is_array($id) && isset($id[$Model->primaryKey])) {
+			$id = $id[$Model->primaryKey];
+		} else {
+			$id = current($id[$Model->primaryKey]);
 		}
 		$data = array(
 			'transaction_id' => $id,
@@ -370,9 +381,9 @@ class AuthnetSource extends DataSource {
 			);
 		$avs_response = $avs_responses[($response["avs_response"])];
 		
-		
 		$response_reason = $response['response_reason_text'];
-		return compact('status', 'transaction_id', 'error', 'response', 'response_reason', 'avs_response', 'input', 'data', 'url');
+		$type = $input['x_type'];
+		return compact('status', 'transaction_id', 'error', 'response', 'response_reason', 'avs_response', 'input', 'data', 'url', 'type');
 	}
 
 	/**

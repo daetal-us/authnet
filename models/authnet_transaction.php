@@ -19,13 +19,15 @@ class AuthnetTransaction extends AuthnetAppModel {
 				)
 			),
 		'card_number' => array(
+			/* 
 			'cc' => array(
 				'rule' => array('cc', 'fast'),
 				'message' => 'Invalid credit card number.',
 				'required' => false,
 				'allowEmpty' => true
 				)
-			),
+			*/
+			), 
 		'expiration' => array(
 			'mmyyyy' => array(
 				'rule' => array('mmyyyy', 'expiration'),
