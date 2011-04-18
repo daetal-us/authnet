@@ -40,35 +40,36 @@ class AuthnetSource extends DataSource {
 	*
 	* Translation for Authnet POST data keys from default config keys
 	*
-	* @var array
+	* @var array $bad => $good
 	*/
 	public $_translation = array(
-		'card_num' => 'card_number',
-		'exp_date' => 'expiration',
-		'type' => 'default_type',
-		'trans_id' => 'transaction_id',
-		'login' => 'login',
-		'tran_key' => 'key',
-		'test_request' => 'test_request',
-		'duplicate_window' => 'duplicate_window',
-		'delim_data' => 'delimit_response',
-		'delim_char' => 'response_delimiter',
-		'encap_char' => 'response_encapsulator',
-		'relay_response' => 'relay_response',
-		'version' => 'api_version',
-		'method' => 'payment_method',
+		'card_number' => 'card_num',
+		'expiration' => 'exp_date',
+		'default_type' => 'type',
+		'transaction_id' => 'trans_id',
+		'key' => 'tran_key',
+		'delimit_response' => 'delim_data',
+		'response_delimiter' => 'delim_char',
+		'response_encapsulator' => 'encap_char',
+		'api_version' => 'version',
+		'payment_method' => 'method',
+		
 		'email_customer' => 'email',
-		'first_name' => 'billing_first_name',
-		'last_name' => 'billing_last_name',
-		'company' => 'billing_company',
-		'street' => 'billing_street',
-		'city' => 'billing_city',
-		'state' => 'billing_state',
-		'zip' => 'billing_zip',
-		'country' => 'billing_country',
-		'phone' => 'billing_phone',
-		'fax' => 'billing_fax',
-		'email' => 'billing_email',
+		'customer_email' => 'email',
+		'customer_id' => 'cust_id',
+		'cust_ip' => 'customer_ip',
+		
+		'billing_first_name' => 'first_name',
+		'billing_last_name' => 'last_name',
+		'billing_company' => 'company',
+		'billing_street' => 'street',
+		'billing_city' => 'city',
+		'billing_state' => 'state',
+		'billing_zip' => 'zip',
+		'billing_country' => 'country',
+		'billing_phone' => 'phone',
+		'billing_fax' => 'fax',
+		'billing_email' => 'email',
 		);
 
 	//public $cacheSources = false;
@@ -198,8 +199,6 @@ class AuthnetSource extends DataSource {
 		
 		$data = array_diff_key($data, array_flip($this->_fieldsToIgnore));
 		
-		$_translator = array_combine(array_values($this->_translation), array_keys($this->_translation));
-		
 		foreach ($data as $key => $value) {
 			if (empty($value)) {
 				continue;
@@ -209,11 +208,14 @@ class AuthnetSource extends DataSource {
 					$value = implode('<|>', $value);
 				}
 			}
-
-			if (in_array($key, $this->_translation)) {
-				$key = $_translator[$key];
+			// translate key
+			if (array_key_exists($key, $this->_translation)) {
+				$key = $this->_translation[$key];
 			}
-
+			// cleanup key
+			if (substr($key, 0, 2)=='x_') {
+				$key = substr($key, 2);
+			}
 			$return["x_{$key}"] = $value;
 		}
 
@@ -231,9 +233,11 @@ class AuthnetSource extends DataSource {
 	private function __parseResponse(&$Model, $response, $input=null, $url=null) {
 		$status = 'unknown';
 		$error = $transaction_id = null;
-		if (!empty($response) && is_string($response)) {
+		if (is_string($response)) {
 			if (!empty($response[1]) && $response[1] == $this->config['response_delimiter']) {
 				$response = explode($this->config['response_delimiter'], $response);
+			} else {
+				$response = array(0, 'bad response', 'bad response', $response);
 			}
 		}
 		$ami_post_response_fields = array(
@@ -283,7 +287,11 @@ class AuthnetSource extends DataSource {
 			'requested_amount',
 			'balance_on_card',
 			);
-		$response = array_combine($ami_post_response_fields, array_slice($response, 0, count($ami_post_response_fields)));
+		if (count($response) >= count($ami_post_response_fields)) {
+			$response = array_combine($ami_post_response_fields, array_slice($response, 0, count($ami_post_response_fields)));
+		} else {
+			$response = array_combine(array_slice($ami_post_response_fields, 0, count($response)), $response);
+		}
 		$response_codes = array(
 			'0' => 'unknown',
 			'1' => 'good',
@@ -379,10 +387,11 @@ class AuthnetSource extends DataSource {
 			'Y' => 'Address (Street) and five digit ZIP match',
 			'Z' => 'Five digit ZIP matches, Address (Street) does not',
 			);
-		$avs_response = $avs_responses[($response["avs_response"])];
+		$avs_response = (isset($response["avs_response"]) && isset($avs_responses[($response["avs_response"])]) ? $avs_responses[($response["avs_response"])] : 'Unknown');
 		
-		$response_reason = $response['response_reason_text'];
-		$type = $input['x_type'];
+		$response_reason = (isset($response['response_reason_text']) ? $response['response_reason_text'] : 'Unknown');
+		$type = (isset($input['x_type']) ? $input['x_type'] : 'Unknown');
+		//print_r(compact('input', 'response'));die();
 		return compact('status', 'transaction_id', 'error', 'response', 'response_reason', 'avs_response', 'input', 'data', 'url', 'type');
 	}
 

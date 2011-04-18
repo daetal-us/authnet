@@ -6,7 +6,7 @@ Class AuthnetTransactionTestCase extends CakeTestCase {
 
 	public $Transaction;
 	public $fixtures = array();	
-	public $deleteIds = array(3405913005);	
+	public $deleteIds = array();	
 
 	function startTest() {
 		$this->AuthnetTransaction =& ClassRegistry::init('AuthnetTransaction');
@@ -57,11 +57,11 @@ Class AuthnetTransactionTestCase extends CakeTestCase {
 		$data = array_merge($this->__data(), array('amount' => '1.'.rand(10,99), 'card_number' => '4111111111111111'));
 		$response = $this->AuthnetTransaction->save($data);
 		$this->assertFalse($response);
-		$this->assertTrue($this->AuthnetTransaction->log[0]['status']=='declined');
-		$this->assertTrue($this->AuthnetTransaction->response['status']=='declined');
-		$this->assertTrue(empty($this->AuthnetTransaction->log[0]['transaction_id']));
-		$this->assertTrue(empty($this->AuthnetTransaction->response['transaction_id']));
-		$this->assertTrue(empty($this->AuthnetTransaction->id));
+		$this->assertEqual($this->AuthnetTransaction->log[0]['status'],'declined');
+		$this->assertEqual($this->AuthnetTransaction->response['status'],'declined');
+		$this->assertTrue(!empty($this->AuthnetTransaction->log[0]['transaction_id']));
+		$this->assertTrue(!empty($this->AuthnetTransaction->response['transaction_id']));
+		$this->assertTrue(!empty($this->AuthnetTransaction->id));
 		$this->assertTrue($this->AuthnetTransaction->log[0]['response_reason']=='This transaction has been declined.');
 	}
 	function testFailZip() {
