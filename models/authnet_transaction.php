@@ -153,7 +153,7 @@ class AuthnetTransaction extends AuthnetAppModel {
 
 			'authorization_code' => array('type' => 'string', 'null' => true, 'default' => NULL),
 
-			'invoice_id' => array('type' => 'string', 'length' => 20, 'null' => true, 'default' => NULL),
+			'invoice_num' => array('type' => 'string', 'length' => 20, 'null' => true, 'default' => NULL),
 			'description' => array('type' => 'string', 'length' => 255, 'null' => true, 'default' => NULL),
 			'line_items' => array('type' => 'text', 'null' => true, 'default' => NULL),
 
